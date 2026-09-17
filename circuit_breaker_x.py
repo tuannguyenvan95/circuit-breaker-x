@@ -1,4 +1,3 @@
-# v0.2.16
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 from genlayer import *
 from dataclasses import dataclass
@@ -11,6 +10,18 @@ def _addr_str(addr: Address) -> str:
         return addr.as_hex.lower()
     except Exception:
         return str(addr).lower()
+
+
+def _get_sender() -> Address:
+    """Safely obtain transaction sender across GenVM and test runner environments."""
+    if hasattr(gl.message, "sender"):
+        return gl.message.sender
+    if hasattr(gl.message, "sender_address"):
+        return gl.message.sender_address
+    try:
+        return gl.message.sender
+    except Exception:
+        return gl.message.sender_address
 
 
 @allow_storage
@@ -33,7 +44,7 @@ class Contract(gl.Contract):
     """
     CircuitBreakerX: Autonomous On-Chain Exploit Emergency Halt Protocol
     Track: Autonomous Protocols
-    Network: GenLayer studionet (Chain ID: 61999)
+    Network: GenLayer studionet (61999) / Studio Next (61997)
     """
     owner: Address
     min_stake: bigint
@@ -47,7 +58,7 @@ class Contract(gl.Contract):
     def __init__(self):
         # GenVM automatically initializes TreeMap and DynArray storage fields.
         # DO NOT reassign self.reports = TreeMap() in __init__ to prevent AssertionError.
-        self.owner = gl.message.sender_address
+        self.owner = _get_sender()
         self.min_stake = bigint(100)
         self.report_count = bigint(0)
         self.treasury_balance = bigint(0)
@@ -131,7 +142,7 @@ class Contract(gl.Contract):
         self.reports[rep_id] = ReportRecord(
             report_id=rep_id,
             target_protocol=target_protocol,
-            reporter=gl.message.sender_address,
+            reporter=_get_sender(),
             evidence_url=clean_url,
             staked_amount=stake,
             status="PENDING",
@@ -325,9 +336,9 @@ Respond ONLY with a VALID JSON object (no markdown formatting, no code blocks):
             total_payout = staked_amount + bounty_reward
             self.reports[report_id] = report
 
-            # Send refund and whitehat reward to reporter
+            # Send refund and whitehat reward to reporter (Cast to u256)
             if total_payout > bigint(0):
-                gl.get_contract_at(reporter_addr).emit_transfer(value=total_payout)
+                gl.get_contract_at(reporter_addr).emit_transfer(value=u256(total_payout))
 
         else:
             # FALSE_ALARM / SPAM: Slash reporter's staked bond to treasury to prevent griefing
@@ -342,7 +353,7 @@ Respond ONLY with a VALID JSON object (no markdown formatting, no code blocks):
         Can only be called by the target protocol address or contract owner.
         """
         prot_str = _addr_str(protocol)
-        sender_str = _addr_str(gl.message.sender_address)
+        sender_str = _addr_str(_get_sender())
         owner_str = _addr_str(self.owner)
 
         if sender_str != owner_str and sender_str != prot_str:
@@ -353,7 +364,7 @@ Respond ONLY with a VALID JSON object (no markdown formatting, no code blocks):
     @gl.public.write
     def set_min_stake(self, new_min_stake: int) -> None:
         """Allow contract owner to update minimum required stake."""
-        if _addr_str(gl.message.sender_address) != _addr_str(self.owner):
+        if _addr_str(_get_sender()) != _addr_str(self.owner):
             raise gl.UserError("Only owner can update min stake.")
         if new_min_stake <= 0:
             raise gl.UserError("Min stake must be greater than 0.")
