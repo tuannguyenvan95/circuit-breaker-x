@@ -10,7 +10,7 @@
 
 The CircuitBreakerX Intelligent Contract is officially deployed and verified on GenLayer studionet:
 
-- **Contract Address:** `0x19be8754b8Aca33d2FA168d1AEb89E9094475B91`
+- **Contract Address:** `0x87d20F796fbe4C252Ff392B96F84B23008c101dd`
 - **Deployment Network:** `studionet` (Chain ID: `61999`)
 - **Execution Environment:** GenVM / Optimistic Democracy Consensus
 - **Explorer Verification:** `https://genlayer-explorer.vercel.app`
